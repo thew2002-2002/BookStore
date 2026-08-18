@@ -21,4 +21,33 @@ model Book {
   stock       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  orders OrderItem[]
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  customerName String
+  email        String
+  phone        String
+  address      String
+  city         String
+  postalCode   String
+  total        Int
+  status       String      @default("PENDING")
+  createdAt    DateTime    @default(now())
+
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id       Int   @id @default(autoincrement())
+  quantity Int
+  price    Int
+
+  orderId  Int
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  bookId   Int
+  book     Book  @relation(fields: [bookId], references: [id])
 }
