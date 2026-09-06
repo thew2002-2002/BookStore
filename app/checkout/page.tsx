@@ -1,13 +1,62 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 
 export default function CheckoutPage() {
-  const { cart, cartTotal } = useCart();
+  const { cart, cartTotal, clearCart  } = useCart();
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const shipping = cart.length > 0 ? 300 : 0;
   const total = cartTotal + shipping;
+
+  async function handleSubmit(formData: FormData) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerName: formData.get("name"),
+          email: formData.get("email"),
+          phone: formData.get("phone"),
+          address: formData.get("address"),
+          city: formData.get("city"),
+          postalCode: formData.get("postalCode"),
+
+          items: cart.map((item) => ({
+            bookId: item.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to place order.");
+      }
+      clearCart();
+      router.push(`/order-success/${data.orderId}`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong."
+      );
+
+      setLoading(false);
+    }
+  }
 
   if (cart.length === 0) {
     return (
@@ -73,8 +122,14 @@ export default function CheckoutPage() {
               Customer Details
             </h2>
 
-            <form className="mt-6 space-y-5">
-              
+            <form
+              id="checkout-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit(new FormData(e.currentTarget));
+              }}
+              className="mt-6 space-y-5"
+            >
               {/* Name */}
               <div>
                 <label
@@ -257,11 +312,21 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* Error */}
+            {error && (
+              <div className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            {/* Place Order */}
             <button
-              type="button"
-              className="mt-6 w-full rounded-lg bg-blue-600 px-6 py-4 font-semibold text-white transition hover:bg-blue-700"
+              type="submit"
+              form="checkout-form"
+              disabled={loading}
+              className="mt-6 w-full rounded-lg bg-blue-600 px-6 py-4 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Place Order
+              {loading ? "Placing Order..." : "Place Order"}
             </button>
           </div>
         </div>
