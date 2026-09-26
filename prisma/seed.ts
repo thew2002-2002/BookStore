@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
@@ -11,8 +12,16 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
+  // Delete existing order items first
+  await prisma.orderItem.deleteMany();
+
+  // Delete existing orders
+  await prisma.order.deleteMany();
+
+  // Now books can be deleted safely
   await prisma.book.deleteMany();
 
+  // Create sample books
   const result = await prisma.book.createMany({
     data: [
       {
@@ -69,8 +78,28 @@ async function main() {
   });
 
   console.log(`Successfully added ${result.count} books!`);
-}
 
+  // Create admin password hash
+  const passwordHash = await bcrypt.hash("admin123", 10);
+
+  // Create or update admin account
+  await prisma.admin.upsert({
+    where: {
+      email: "admin@bookstore.com",
+    },
+    update: {
+      passwordHash,
+    },
+    create: {
+      email: "admin@bookstore.com",
+      passwordHash,
+    },
+  });
+
+  console.log("Admin account created successfully!");
+  console.log("Email: admin@bookstore.com");
+  console.log("Password: admin123");
+}
 main()
   .catch((error) => {
     console.error("Seed failed:");

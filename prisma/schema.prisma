@@ -51,3 +51,11 @@ model OrderItem {
   bookId   Int
   book     Book  @relation(fields: [bookId], references: [id])
 }
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
